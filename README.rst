@@ -19,3 +19,6 @@ The package contains support for reconstruction as well as generation of
 
 To learn more about applications, underlying theory and limitations check out 
 the original publicationalong with the coding example
+
+.. raw:: html
+   :file: docs/build/html/index.html
