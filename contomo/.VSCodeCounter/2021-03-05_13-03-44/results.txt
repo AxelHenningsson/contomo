@@ -1,0 +1,39 @@
+Date : 2021-03-05 13:03:44
+Directory : /home/axel/workspace/contomo/src
+Total : 15 files,  1376 codes, 1137 comments, 365 blanks, all 2878 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Python   |         15 |      1,376 |      1,137 |        365 |      2,878 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                        | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                           |         15 |      1,376 |      1,137 |        365 |      2,878 |
++-------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                    | language | code       | comment    | blank      | total      |
++-------------------------------------------------------------+----------+------------+------------+------------+------------+
+| /home/axel/workspace/contomo/src/__init__.py                | Python   |          0 |          0 |          1 |          1 |
+| /home/axel/workspace/contomo/src/basis.py                   | Python   |        227 |        174 |         42 |        443 |
+| /home/axel/workspace/contomo/src/flow_model.py              | Python   |        172 |        170 |         43 |        385 |
+| /home/axel/workspace/contomo/src/phantom.py                 | Python   |        225 |        316 |         50 |        591 |
+| /home/axel/workspace/contomo/src/projected_advection_pde.py | Python   |         86 |         88 |         25 |        199 |
+| /home/axel/workspace/contomo/src/ray_model.py               | Python   |         43 |         45 |          7 |         95 |
+| /home/axel/workspace/contomo/src/sinogram_interpolator.py   | Python   |         68 |         66 |         13 |        147 |
+| /home/axel/workspace/contomo/src/test_advection_pde.py      | Python   |         39 |          0 |         10 |         49 |
+| /home/axel/workspace/contomo/src/test_advection_pde_2.py    | Python   |         48 |          0 |         13 |         61 |
+| /home/axel/workspace/contomo/src/test_fvm.py                | Python   |         34 |          0 |         11 |         45 |
+| /home/axel/workspace/contomo/src/test_solver.py             | Python   |        139 |         29 |         59 |        227 |
+| /home/axel/workspace/contomo/src/test_sphere_phantom.py     | Python   |         70 |          0 |         20 |         90 |
+| /home/axel/workspace/contomo/src/test_voxel_phantom.py      | Python   |         53 |          1 |         23 |         77 |
+| /home/axel/workspace/contomo/src/utils.py                   | Python   |         79 |        124 |         20 |        223 |
+| /home/axel/workspace/contomo/src/velocity_solver.py         | Python   |         93 |        124 |         28 |        245 |
+| Total                                                       |          |      1,376 |      1,137 |        365 |      2,878 |
++-------------------------------------------------------------+----------+------------+------------+------------+------------+

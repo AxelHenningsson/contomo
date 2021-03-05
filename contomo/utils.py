@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
@@ -6,7 +5,7 @@ from pyevtk.hl import gridToVTK
 import meshio
 import vtk
 from vtk.util import numpy_support
-import ray_model
+from . import ray_model
 
 """A set of utility functions used across package.
 

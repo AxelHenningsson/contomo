@@ -1,9 +1,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import utils
-import velocity_solver
-import utils
+from . import utils
+from . import velocity_solver
 
 class ProjectedAdvectionPDE(object):
     """Advection partial differential equation (PDE) projected into sinogram space.

@@ -3,10 +3,9 @@ import dill as pickle
 import matplotlib.pyplot as plt
 import copy
 import glob
-import utils
-import ray_model
-import utils
-import flow_model
+from . import utils
+from . import ray_model
+from . import flow_model
 
 class DynamicPhantom(object):
     """Density field phantom defined in space and time (4d).
