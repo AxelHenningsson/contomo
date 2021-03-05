@@ -1,19 +1,19 @@
 import setuptools
 
-with open("README.md", "r", encoding="utf-8") as fh:
+with open("README.rst", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="example-pkg-axiomel", # Replace with your own username
+    name="contomo", # Replace with your own username
     version="0.0.1",
-    author="Example Author",
-    author_email="author@example.com",
-    description="A small example package",
+    author="Axel Henningsson",
+    author_email="nilsaxelhenningsson@gmail.com",
+    description="Tools for projected advection PDE reconstructions in high speed sparse data tomography imaging.",
     long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
+    long_description_content_type="text/x-rst",
+    url="https://github.com/AxelHenningsson/contomo",
     project_urls={
-        "Bug Tracker": "https://github.com/pypa/sampleproject/issues",
+        "Documentation": "https://github.com/AxelHenningsson/contomo",
     },
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -23,5 +23,3 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
 )
-
-
