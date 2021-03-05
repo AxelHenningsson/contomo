@@ -20,14 +20,24 @@ parts/
 sdist/
 var/
 wheels/
-.VSCodeCounter/
-.vscode/
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
+
+# vs code stuff
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+!.VSCodeCounter/
+
+# Local History for Visual Studio Code
+.history/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
