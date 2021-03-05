@@ -29,12 +29,7 @@ MANIFEST
 
 # vs code stuff
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-*.code-workspace
-!.VSCodeCounter/
+src/.VSCodeCounter/*
 
 # Local History for Visual Studio Code
 .history/
