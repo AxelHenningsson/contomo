@@ -29,7 +29,7 @@ MANIFEST
 
 # vs code stuff
 .vscode/*
-src/.VSCodeCounter/*
+*/.VSCodeCounter/*
 
 
 # Local History for Visual Studio Code
