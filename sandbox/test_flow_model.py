@@ -1,9 +1,13 @@
-import phantom
-import basis
 import numpy as np
-import utils
 import matplotlib.pyplot as plt
-import FVM
+from contomo import phantom
+from contomo import projected_advection_pde
+from contomo import flow_model
+from contomo import velocity_solver
+from contomo import basis
+from contomo import ray_model
+from contomo import sinogram_interpolator
+from contomo import utils
 
 def padd(array, value, pad):
     new_arr = np.zeros( tuple(np.array(array.shape)+2*pad) )

@@ -1,8 +1,14 @@
 import numpy as np
-import utils
 import matplotlib.pyplot as plt
-import phantom
 
+from contomo import phantom
+from contomo import projected_advection_pde
+from contomo import flow_model
+from contomo import velocity_solver
+from contomo import basis
+from contomo import ray_model
+from contomo import sinogram_interpolator
+from contomo import utils
 dem_timestepsize = 1e-5
 dem_particle_radius = 0.004
 dx = dem_particle_radius/2.

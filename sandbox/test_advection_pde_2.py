@@ -1,15 +1,15 @@
 import contomo
-raise
+
 import numpy as np
 import matplotlib.pyplot as plt
-import phantom
-import projected_advection_pde
-import flow_model
-import velocity_solver
-import basis
-import ray_model
-import sinogram_interpolator
-import utils
+from contomo import phantom
+from contomo import projected_advection_pde
+from contomo import flow_model
+from contomo import velocity_solver
+from contomo import basis
+from contomo import ray_model
+from contomo import sinogram_interpolator
+from contomo import utils
 
 ph = phantom.Voxels.load( "/home/axel/Downloads/spherephantom.phantom" )
 dx = ph.detector_pixel_size

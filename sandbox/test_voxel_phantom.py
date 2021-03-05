@@ -1,8 +1,13 @@
-import phantom
-import basis
 import numpy as np
-import utils
 import matplotlib.pyplot as plt
+from contomo import phantom
+from contomo import projected_advection_pde
+from contomo import flow_model
+from contomo import velocity_solver
+from contomo import basis
+from contomo import ray_model
+from contomo import sinogram_interpolator
+from contomo import utils
 
 N  = 32
 
