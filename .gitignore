@@ -31,8 +31,6 @@ MANIFEST
 .vscode/*
 src/.VSCodeCounter/*
 
-# any sandbox stuff
-sandbox/*
 
 # Local History for Visual Studio Code
 .history/
