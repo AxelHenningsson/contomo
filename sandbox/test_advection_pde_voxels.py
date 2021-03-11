@@ -9,7 +9,7 @@ from contomo import ray_model
 from contomo import sinogram_interpolator
 from contomo import utils
 
-ph = phantom.Voxels.load( "/home/axel/Downloads/voxelphantom.ph" )
+ph = phantom.Voxels.load( "/home/axel/Downloads/voxelphantom.phantom" )
 initial_volume = ph.inital_volume
 dx = ph.detector_pixel_size
 

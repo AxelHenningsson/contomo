@@ -53,13 +53,21 @@ class DynamicPhantom(object):
                             { "label"    : label,
                               "time"     : time,
                               "angles"   : angles,
-                              "sinogram" : self._get_sinogram(time, angles) }
+                              "sinogram" : self.get_sinogram(time, angles) }
                                )
 
-    def _get_sinogram(self, time, angles):
+    def get_sinogram(self, time, angles):
         """Compute and return sinogram for a given time and angles.
+
+        Args:
+            time (:obj:`float`): Time at which to evaluate the phantom density field.
+            angles (:obj:`numpy array`): Projection angles in degrees.
+
+        Returns:
+            :obj:`numpy array` sinogram of `shape=(m,len(angles),n)`
+
         """
-        raise NotImplementedError("The method _get_sinogram() method must be implemented by the subclass")
+        raise NotImplementedError("The method get_sinogram() method must be implemented by the subclass")
 
     def get_measurements_by_label( self, labels ):
         """Return all measurments that have one of the input labels.
@@ -217,8 +225,8 @@ class Voxels(DynamicPhantom):
         self.flow_model = flow_model.FlowModel( (0,0,0), detector_pixel_size, self.voxel_volume.shape )
         self.flow_model.fixate_velocity_basis( velocity_basis )        
 
-    def _get_sinogram(self, time, angles):
-        """Compute sinogram by propagating density to desired time and exectuing the ray model.
+    def get_sinogram(self, time, angles):
+        """This method implements :meth:`get_sinogram()` of superclass :obj:`Phantom`.
         """
         self._propagate_volume( time )
         rm = ray_model.RayModel( self.voxel_volume.shape,
@@ -483,8 +491,8 @@ class Spheres(DynamicPhantom):
             interp_funcs.append( lambda t, t0=t0, t1=t1, c0d=c0d, c1d=c1d: c0d + ( (t - t0) / (t1 - t0) )*( c1d - c0d ) )
         return interp_funcs
 
-    def _get_sinogram(self, time, angles):
-        """Produce analytical radon transform of ensemble for time and angles.
+    def get_sinogram(self, time, angles):
+        """This method implements :meth:`get_sinogram()` of superclass :obj:`Phantom`.
         """
         if self._dem_vtk_timeseries is not None: 
             self._set_sphere_ensemble_from_dem( time )

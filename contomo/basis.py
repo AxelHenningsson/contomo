@@ -1,4 +1,5 @@
 import numpy as np
+import dill as pickle
 import matplotlib.pyplot as plt
 from scipy.sparse import csr_matrix
 from numba import njit
@@ -185,7 +186,6 @@ class Basis(object):
 
         """
         raise NotImplementedError("The __call__() method must be implemented by the subclass")
-
 
 class TetraMesh(Basis):
     """Defines a 3D tetrahedral finite element type basis by subclassing :obj:`Basis`. 

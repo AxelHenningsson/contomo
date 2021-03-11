@@ -14,6 +14,10 @@ class RayModel(object):
         number_of_detector_pixels (:obj:`int`): Number of pixels comprising the detector side (square detector)
         angles (:obj:`numpy array`): Projection angles in degrees.
 
+    Attributes:
+        number_of_detector_pixels (:obj:`int`): Number of pixels comprising the detector side (square detector)
+        angles (:obj:`numpy array`): Projection angles in degrees.
+
     NOTE: 
         This implementation uses the indexing convention that an array has
         x dimension along axis=0, y along axis=1, z along axis=2 with ascending coordinate
@@ -24,6 +28,8 @@ class RayModel(object):
     """
 
     def __init__(self, volume_shape, number_of_detector_pixels, angles ):
+        self.number_of_detector_pixels = number_of_detector_pixels
+        self.angles = angles
         self._volume_shape = volume_shape
         self._dcols = number_of_detector_pixels
         self._drows = number_of_detector_pixels

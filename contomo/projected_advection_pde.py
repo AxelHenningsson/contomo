@@ -1,6 +1,8 @@
 
 import numpy as np
+import dill as pickle
 import matplotlib.pyplot as plt
+import os
 from . import utils
 from . import velocity_solver
 
@@ -35,8 +37,6 @@ class ProjectedAdvectionPDE(object):
         flow_model (:obj:`FlowModel`): Object defining the derivatives of density w.r.t time.
         ray_model (:obj:`RayModel`): Object defining the transformation from real space to sinogram space.
         sinogram_interpolator (:obj:`SinogramInterpolator`): Object defining the continous derivatives in time of measured sinograms.
-        intermediate_volumes (:obj:`list`): Density fields recovered at integration timepoints, only filled if 
-            the boolean save_intermediate_volumes is True in propagate_from_initial_value()
 
     """
 
@@ -47,9 +47,6 @@ class ProjectedAdvectionPDE(object):
         self.flow_model            =  flow_model
         self.ray_model             =  ray_model
         self.sinogram_interpolator =  sinogram_interpolator
-        import copy
-        self.s2 = copy.deepcopy(sinogram_interpolator)
-        self.intermediate_volumes  = []
 
     def get_interpolated_sinogram_derivative(self, time, rho):
         """Compute sinogram temporal derivatives considering current density state and measured data.
@@ -96,22 +93,22 @@ class ProjectedAdvectionPDE(object):
 
         """
         dgdt = self.get_interpolated_sinogram_derivative( time, rho )
-        self.velocity_solver.flow_model.fixate_density_field( rho )
-        self.velocity_solver.second_member = dgdt
+        self._velocity_solver.flow_model.fixate_density_field( rho )
+        self._velocity_solver.second_member = dgdt
 
-        if self.velocity_solver.optimal_coefficents is not None:
-            inital_guess = self.velocity_solver.optimal_coefficents 
+        if self._velocity_solver.optimal_coefficents is not None:
+            inital_guess = self._velocity_solver.optimal_coefficents 
         else:
             inital_guess = np.zeros( self.flow_model.velocity_basis.coefficents.shape )
 
-        self.velocity_solver.solve( dgdt, 
+        self._velocity_solver.solve( dgdt, 
                                     inital_guess,
                                     maxiter=self.maxiter, 
                                     verbose=self.verbose, 
                                     print_frequency=1 )
 
-        self.velocity_solver.initial_guess_coefficents = self.velocity_solver.optimal_coefficents
-        self.flow_model.velocity_basis.coefficents = self.velocity_solver.optimal_coefficents
+        self._velocity_solver.initial_guess_coefficents = self._velocity_solver.optimal_coefficents
+        self.flow_model.velocity_basis.coefficents = self._velocity_solver.optimal_coefficents
         drhodt = self.flow_model.get_temporal_density_derivatives()
 
         return drhodt
@@ -123,7 +120,7 @@ class ProjectedAdvectionPDE(object):
                                       number_of_timesteps,
                                       velocity_recovery_iterations = 10,
                                       verbose = True,
-                                      save_intermediate_volumes = True ):
+                                      save_path = None ):
         """Propagate the target advection equation in time.
 
         Args:
@@ -134,35 +131,34 @@ class ProjectedAdvectionPDE(object):
             velocity_recovery_iterations (:obj:`numpy array`): Number of allowed iterations for recovering velocities 
                 in the projected sub-problem.
             verbose (:obj:`bool`, optional): Print progress and convergence metrics. Defaults to True.
-            save_intermediate_volumes (:obj:`bool`, optional): Save all reconstructed density fields. Defaults to True.
+            save_path (:obj:`string`, optional): Save reconstructed density fields and sinograms to the given
+                absolute path ending with desired folder name. Defaults to None.
 
         """
-        if verbose:
-            print('##############################################################################')
-            print(' R A Y    M O D E L    E R R O R ')
-            ray_model_error =  np.linalg.norm( self.ray_model.forward_project( initial_volume ) - self.sinogram_interpolator([0])[0])
-            print( ray_model_error )
-            print('##############################################################################')
 
-        self.velocity_solver = velocity_solver.VelocitySolver( self.flow_model, 
-                                                               self.ray_model,
-                                                               dt = stepsize )
-        self.velocity_solver.x0 = np.zeros(self.velocity_solver.flow_model.velocity_basis.coefficents.shape)
-
+        self._velocity_solver = velocity_solver.VelocitySolver( self.flow_model, 
+                                                                self.ray_model,
+                                                                dt = stepsize )
+        self._velocity_solver.x0 = np.zeros(self._velocity_solver.flow_model.velocity_basis.coefficents.shape)
 
         self.maxiter = velocity_recovery_iterations
         self.verbose = verbose
 
         current_time = start_time
-        self.current_volume = initial_volume
+        self.current_volume = initial_volume.copy()
 
-        if save_intermediate_volumes:
-            self.intermediate_volumes.append( self.current_volume )
+        if save_path is not None:
+            self._instantiate_save_folders( save_path )
 
-        if save_intermediate_volumes:
-            self.intermediate_volumes.append( self.current_volume )
-
-        if self.verbose:
+        if verbose:
+            print("##############################################################################")
+            print(" R A Y    M O D E L    E R R O R ")
+            interpolated_sinogram  = self.sinogram_interpolator( [0], original=True )[0,:,:,:]
+            reconstructed_sinogram = self.ray_model.forward_project( initial_volume )
+            ray_model_error =  np.linalg.norm( reconstructed_sinogram - interpolated_sinogram )
+            print( ray_model_error )
+            print("##############################################################################")
+            print(" ")
             print("Starting propagation of density volume in time")
 
         for step in range(number_of_timesteps):
@@ -170,6 +166,7 @@ class ProjectedAdvectionPDE(object):
                 print(" ")
                 print("time = ", current_time, "s   timestep = ", step, "  out of total ", number_of_timesteps, " steps")
 
+            previous_volume = self.current_volume.copy()
             self.current_volume = utils.TVD_RK3_step( self.get_density_derivative, 
                                                       current_time, 
                                                       self.current_volume.copy(), 
@@ -178,21 +175,69 @@ class ProjectedAdvectionPDE(object):
 
             if verbose:
                 interpolated_sinogram  = self.sinogram_interpolator( [current_time], original=True )[0,:,:,:]
-                if save_intermediate_volumes:
-                    starting_reconstructed_sinogram = self.ray_model.forward_project( self.intermediate_volumes[-1] )
+                if save_path is not None:
+                    starting_reconstructed_sinogram = self.ray_model.forward_project( previous_volume )
                     print("Original Siogram residual: ", np.linalg.norm( interpolated_sinogram - starting_reconstructed_sinogram) )
                 reconstructed_sinogram = self.ray_model.forward_project( self.current_volume )
                 print("Siogram residual: ", np.linalg.norm( interpolated_sinogram - reconstructed_sinogram) )
 
-            if save_intermediate_volumes:
-                self.intermediate_volumes.append( self.current_volume )
+            if save_path is not None:
+                self._save_integration_step( save_path, self.current_volume, current_time, step )
 
-    def save_volumes_as_vtk(self, file):
-        """Write all saved density volume to disc in a paraview readable format.
-
-        Args:
-            file (str): abosulte path, ending with filename wihtout extensions.
+    def _instantiate_save_folders(self, save_path):
+        """Setup a folder structure to save reconstruction progress.
 
         """
-        for i in range(len(self.intermediate_volumes)):
-            utils.save_as_vtk_voxel_volume(file+"_"+str(i) , self.intermediate_volumes[i])
+        os.mkdir(save_path)
+        for folder in ["volumes", "projections", "velocity"]:
+            if folder not in os.listdir(save_path):
+                os.mkdir(save_path + "/" + folder)
+
+        np.save(save_path+"/times", np.array([]))
+
+        meta_data = { "detector dimension"                 : self.ray_model.number_of_detector_pixels,
+                      "angles"                             : self.ray_model.angles,
+                      "number of velocity basis functions" : self.flow_model.velocity_basis.coefficents.shape[0],
+                      "Finite volume cell size"            : self.flow_model.dx }
+
+        np.save(save_path+"/meta_data.npy", meta_data)
+
+    def _save_integration_step(self, save_path, current_volume, current_time, step ):
+        """Save volume and projections to disc in save_path directory.
+
+        """
+        interpolated_sinogram  = self.sinogram_interpolator( [current_time], original=True )[0,:,:,:]
+        reconstructed_sinogram = self.ray_model.forward_project( current_volume )
+        times = np.load(save_path+"/times.npy")
+
+        np.save( save_path + "/volumes/volume_"+str(step).zfill(4)+".npy", current_volume )
+        utils.save_as_vtk_voxel_volume(save_path + "/volumes/volume_"+str(step).zfill(4) , current_volume)
+        
+        np.save( save_path + "/projections/reconstructed_sinogram_"+str(step).zfill(4)+".npy", reconstructed_sinogram )
+        np.save( save_path + "/projections/interpolated_sinogram_"+str(step).zfill(4)+".npy", interpolated_sinogram )
+
+        np.save( save_path + "/times", np.concatenate( [times, np.array([current_time]) ]) )
+
+        np.save(save_path + "/velocity/basis_coefficents_"+str(step).zfill(4)+".npy", self._velocity_solver.optimal_coefficents)
+
+    def save(self, file):
+        """Save the projected advection pde problem by pickling it to disc.
+
+        Args:
+            file (str): Absolute file path ending with the desired filename and no extensions.
+
+        """
+        with open(file+".papde", 'wb') as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+    @classmethod
+    def load(cls, file):
+        """Load a projected advection pde problem from a pickled file. 
+
+        Args:
+            file (str): Absolute file path ending with the full filename. The extension
+                should be ".papde".
+
+        """
+        with open(file, 'rb') as output:
+            return pickle.load(output)
