@@ -9,7 +9,6 @@ from matplotlib import rc
 rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
 rc('text', usetex=True)
 
-
 def rmse( arr1, arr2 ):
     n = len(arr1.flatten())
     return np.sqrt( np.sum( (arr1 - arr2)**2 ) / n )
@@ -98,6 +97,7 @@ ax.legend(fontsize=15)
 
 
 
+
 ################################################################################################################################
 # Volume residual analysis, plot rmse, mae and maxabs as they evolve with time.
 volume_residual_maxabs = []
@@ -146,6 +146,7 @@ for i,(c,d,t) in enumerate(zip(colors,data,titles)):
 
 
 
+
 ################################################################################################################################
 # Sinogram residual analysis, plot rmse, mae and maxabs as they evolve with time.
 sinogram_residual_maxabs = np.zeros((len(times),))
@@ -177,6 +178,7 @@ for i,(c,d,t) in enumerate(zip(colors,data,titles)):
     ax[i].tick_params(axis='both', which='minor', labelsize=11)
     ax[i].set_xlabel("time [s]", fontsize=15)
 ################################################################################################################################
+
 
 
 

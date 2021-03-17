@@ -328,9 +328,11 @@ class Spheres(DynamicPhantom):
     def _radon_on_grid(self, time, eta, xi, angles):
         """Compute radon transform of sphere ensemble over a grid.
         """
-        sinogram = 0
+        sinogram = np.zeros( (eta.shape[0], len(angles), eta.shape[1]) )
         for s in self._spheres:
-            sinogram += s.radon(time, eta, xi, angles)
+            xil, xiu, etal, etau, values = s.local_radon(time, eta, xi, angles)
+            for i in range(len(values)):
+                sinogram[xil[i]:xiu[i], i, etal[i]:etau[i]] += values[i]
         return sinogram
 
     def _radon(self, time, angles):
@@ -455,23 +457,23 @@ class Spheres(DynamicPhantom):
     def _set_sphere_ensemble_from_dem( self, time ):
         """Set the ensemble according to DEM simulation  by linear interpolation between timesteps.
         """
-        t0,t1,c0,c1,r0,r1,v0,v1 = self._get_particle_state_from_file(time)
+        t0,t1,c0,c1,r0,r1,v0,v1,rho0,rho1 = self._get_particle_state_from_file(time)
         self._spheres = []
         for particle in range(c0.shape[0]):
             x,y,z = self._get_interp_functions(c0, c1, particle, t0, t1)
-            self.add_sphere( copy.copy(x), copy.copy(y), copy.copy(z), r0[particle], density=1.0 )
+            self.add_sphere( copy.copy(x), copy.copy(y), copy.copy(z), r0[particle], rho0[particle] )
 
     def _get_particle_state_from_file(self, time):
         """Extract particle states of neighbouring DEM timesteps enclosing the specified time.
         """
         dump_times = self._map_time_to_timestep(time)
-        c0, r0, v0 = utils.load_vtk_point_data( self._dem_vtk_timeseries[dump_times[0]] )
-        c1, r1, v1 = utils.load_vtk_point_data( self._dem_vtk_timeseries[dump_times[1]] )
+        c0, r0, v0, rho0 = utils.load_vtk_point_data( self._dem_vtk_timeseries[dump_times[0]] )
+        c1, r1, v1, rho1 = utils.load_vtk_point_data( self._dem_vtk_timeseries[dump_times[1]] )
         t0 = dump_times[0]*self._dem_vtk_timeseries['timestepsize']
         t1 = dump_times[1]*self._dem_vtk_timeseries['timestepsize']
         c0 += self._dem_vtk_timeseries['translation']
         c1 += self._dem_vtk_timeseries['translation']
-        return t0,t1,c0,c1,r0,r1,v0,v1
+        return t0,t1,c0,c1,r0,r1,v0,v1,rho0,rho1
 
     def _map_time_to_timestep(self, time):
         """Find neighbouring DEM timesteps enclosing a specified time.
@@ -558,8 +560,8 @@ class _Sphere( object ):
         else:
             return lambda time, variable=variable : variable
 
-    def radon( self, time, eta, xi, angles ):
-        """Compute radon tansform of a sphere at multiple detector locations (eta, xi).
+    def local_radon( self, time, eta, xi, angles ):
+        """Compute local radon tansform of a sphere at multiple detector locations (eta, xi).
 
         Args:
             time (:obj:`float`): time at which to record the radon transform.
@@ -568,7 +570,11 @@ class _Sphere( object ):
             angles (:obj:`numpy array`): Projection angles in degrees.
 
         Returns:
-            (:obj:`numpy array`): sinogram of ``shape=(xi.shape[0], len(angles), xi.shape[1])``
+            (:obj:`iterable` of :obj:`numpy array`): lower and upper detector indices bounding the 
+                projection of the sphere: ```xil, xiu, etal, etau```. These are to be used as 
+                ```sinogram[xil[i]:xiu[i], i, etal[i]:etau[i]]``` which will extract the region in 
+                the i:th sinogram where the projection of the sphere will lie. The projected ```values```
+                are returned as a list of equal length as the bounding inidces ```len(values)==len(xil)```.
         """
 
         density  = self.density(time)
@@ -592,7 +598,50 @@ class _Sphere( object ):
         p_xi  = P.T.dot( np.array([0,0,1]) )
         sinogram = np.zeros((eta.shape[0],len(angles),eta.shape[1]))
 
+        xil, xiu, etal, etau = self._get_sphere_eta_xi_bounds(radius, eta, xi, p_eta, p_xi)
+        values = []
         for i in range( len( angles ) ):
-            sinogram[:,i,:] =  2*density*np.real( np.sqrt( radius**2 - (eta - p_eta[i])**2  - (xi - p_xi[i])**2 + 0j  ) ) 
+            values.append( 2*density*np.real( np.sqrt( radius**2 - (eta[xil[i]:xiu[i], etal[i]:etau[i]] - p_eta[i])**2  - (xi[xil[i]:xiu[i], etal[i]:etau[i]] - p_xi[i])**2 + 0j  ) )  )
 
-        return sinogram
+        return xil, xiu, etal, etau, values
+
+    def _get_sphere_eta_xi_bounds(self, radius, eta, xi, p_eta, p_xi):
+        """Compute projection support of sphere given projected sphere coordinates p_eta, p_xi.
+
+        This method is to be used when creating a radon transform of a large number of spheres.
+        By only computing for the pixels in the shadow of the sphere, massive computation can
+        be saved.
+
+        Args:
+            radius (:obj:`float`): Sphere radius.
+            eta (:obj:`numpy array`): 2d detector grid eta coordinate.
+            xi (:obj:`numpy array`): 2d detector grid xi coordinate.
+            p_eta (:obj:`numpy array`): Sphere centroid eta coordinates for a range of angles.
+            p_xi (:obj:`numpy array`): Sphere centroid xi coordinates for a range of angles.
+
+        Returns:
+            (:obj:`iterable` of :obj:`numpy array`): lower and upper detector indices bounding the 
+                projection of the sphere: ```xil, xiu, etal, etau```. These are to be used as 
+                ```sinogram[xil[i]:xiu[i], i, etal[i]:etau[i]]``` which will extract the region in 
+                the i:th sinogram where the projection of the sphere will lie.
+        """
+
+        Neta = eta.shape[0] // 2
+        Nxi  = xi.shape[1]  // 2
+
+        etaindx = np.abs( ( p_eta / ( np.max(eta) - np.min(eta) ) ) * eta.shape[0]  - Neta )
+        xiindx  = np.abs( ( p_xi  / ( np.max(xi) - np.min(xi) ) ) * xi.shape[1]  - Nxi )
+        etasupport = radius / ( np.max(eta) - np.min(eta) ) * eta.shape[0]
+        xisupport  = radius / ( np.max(xi) - np.min(xi) )  * xi.shape[1]
+
+        xil  = np.round( xiindx  - xisupport  ).astype(int)
+        xiu  = np.round( xiindx  + xisupport  ).astype(int) + 1
+        etal = np.round( etaindx - etasupport ).astype(int)
+        etau = np.round( etaindx + etasupport ).astype(int) + 1
+
+        xil[xil<0] = 0
+        xiu[xiu>xi.shape[1]] = 0
+        etal[etal<0] = 0
+        etau[etau>eta.shape[0]] = eta.shape[0]
+
+        return xil, xiu, etal, etau

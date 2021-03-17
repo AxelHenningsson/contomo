@@ -68,13 +68,6 @@ class ProjectedAdvectionPDE(object):
         self.sinogram_interpolator.add_sinograms( [time], [self.ray_model.forward_project( rho )] )
         dgdt = self.sinogram_interpolator( [time], derivative=1 )[0,:,:,:]
 
-        # TODO: Is it good or bad to reset the splines? If not reset, then the previous
-        # errors might serve to build up the correction more strongly. Some results
-        # do indicate that this is a more consistent interpretation of the off line
-        # derivatives.
-
-        # self.sinogram_interpolator.reset() 
-
         return dgdt
 
     def get_density_derivative(self, time, rho):
@@ -155,7 +148,7 @@ class ProjectedAdvectionPDE(object):
             print(" R A Y    M O D E L    E R R O R ")
             interpolated_sinogram  = self.sinogram_interpolator( [0], original=True )[0,:,:,:]
             reconstructed_sinogram = self.ray_model.forward_project( initial_volume )
-            ray_model_error =  np.linalg.norm( reconstructed_sinogram - interpolated_sinogram )
+            ray_model_error =  np.linalg.norm( interpolated_sinogram - reconstructed_sinogram )
             print( ray_model_error )
             print("##############################################################################")
             print(" ")

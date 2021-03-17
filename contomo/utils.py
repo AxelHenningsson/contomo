@@ -213,9 +213,10 @@ def load_vtk_point_data(file):
     coordinates = np.array( [ data.GetPoint(i) for i in range(data.GetNumberOfPoints()) ] )
     
     radius      = numpy_support.vtk_to_numpy(data.GetPointData().GetArray("radius"))
+    density     = numpy_support.vtk_to_numpy(data.GetPointData().GetArray("mass")) / ( (4./3)*(radius**3)*np.pi )
     velocity    = numpy_support.vtk_to_numpy(data.GetPointData().GetArray("v"))
     
     ids         = numpy_support.vtk_to_numpy(data.GetPointData().GetArray("id"))
     order       = np.argsort(ids)
 
-    return coordinates[order], radius[order], velocity[order]
+    return coordinates[order], radius[order], velocity[order], density[order]
