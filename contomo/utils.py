@@ -175,23 +175,29 @@ def save_as_vtk_particles(file, coordinates, velocities, radii):
 
     """
     cells = [("vertex", np.array([[i] for i in range(coordinates.shape[0])]) )]
+    if len(file.split("."))==1: 
+        filename = file + ".vtk"
+    else:
+        filename = file
     meshio.Mesh(
         coordinates,
         cells,
         point_data={"radii" : radii, "velocity": velocities},
-        ).write(file)
+        ).write(filename)
 
-def save_as_vtk_voxel_volume(file, voxel_volume):
+def save_as_vtk_voxel_volume(file, voxel_volume, units=(1.,1.,1.), origin=(0.,0.,0.)):
     """Save numpy array with voxel information to paraview readable format.
 
     Args:
         file (:obj:`string`): Absolute path ending with desired filename. 
         voxel_volume (:obj:`numpy array`): Per voxel density values in a 3d array.
+        units (:obj:`tuple` of :obj:`float`): Distance between voxels in ```voxel_volume``` (x,y,z).
+        origin (:obj:`tuple` of :obj:`float`): Origin of voxel ```voxel_volume[0,0,0]``` (x,y,z).
 
     """ 
-    x = np.arange(0, voxel_volume.shape[0]+1, dtype=np.int32)
-    y = np.arange(0, voxel_volume.shape[1]+1, dtype=np.int32)
-    z = np.arange(0, voxel_volume.shape[2]+1, dtype=np.int32)
+    x = np.arange(0, voxel_volume.shape[0]+1, dtype=np.float32)*units[0] + origin[0]
+    y = np.arange(0, voxel_volume.shape[1]+1, dtype=np.float32)*units[1] + origin[1]
+    z = np.arange(0, voxel_volume.shape[2]+1, dtype=np.float32)*units[2] + origin[2]
     gridToVTK(file, x, y, z, cellData = {'voxel_volume': voxel_volume})
 
 def load_vtk_point_data(file):

@@ -1,57 +1,38 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import UnivariateSpline
 import copy
+from contomo.piecewise_quadratic import PiecewiseQuadratic
 
 class SinogramInterpolator(object):
-    """Interpolate a timeseries of sinograms by univariate splines.
+    """Interpolate a timeseries of sinograms by piecewise quadratic polynomials.
 
     Given a set of pixelated sinograms with fixed dimension in time, this
     class defines an interpolation scheme, such that both the sinogram value and
     temporal derivatives of any one pixel can be evaluated for an arbitrary timepoint.
 
-    Support for inserting, replacing and resetting the interpolation splines is given.
+    Interpolation is executed through :obj:`contomo.piecewise_quadratic.PiecewiseQuadratic` with `bc_start=0`.
 
-    Interpolation is executed through :obj:`scipy.interpolate.UnivariateSpline` for 
-    further documentation and details on the interpolation `see the scipy docs`_.
-    
-    .. _`see the scipy docs`: https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.UnivariateSpline.html
-
-    Args: 
-
+    Args:
         sample_times (:obj:`numpy array`): Times at which the sinograms where recorded.
         sinogram_timeseries (:obj:`numpy array`): Sinogram timeseries of ``shape=(T,m,n,d)`` where ``axis=2``
             indexes projections ``axis=0`` indexes time, and ``m`` and ``d`` indexes the pixels of the sinograms.
-        smoothness (:obj:`float`, optional): Required smoothness of spline. Defaults to 0 (snugg fit to data).
-        order (:obj:`int`): Order of the univariate spline to use for interpolation. Defaults to 2 (quadratic).
 
     Attributes:
         sample_times (:obj:`numpy array`): Times at which the sinograms where recorded.
         sinogram_timeseries (:obj:`numpy array`): Sinogram timeseries of ``shape=(T,m,n,d)`` where ``axis=2`` 
             indexes projections ``axis=0`` indexes time, and ``m`` and ``d`` indexes the pixels of the sinograms.
-        smoothness (:obj:`float`, optional): Required smoothness of spline. Defaults to 0 (snugg fit to data).
-        order (:obj:`int`): Order of the univariate spline to use for interpolation. Defaults to 2 (quadratic).
 
     """
 
-    def __init__(self, sample_times, sinogram_timeseries, smoothness=0, order=2):
+    def __init__(self, sample_times, sinogram_timeseries):
         self.sample_times = sample_times
         self.sinogram_timeseries = sinogram_timeseries
-        self.order = order
-        self.smoothness = smoothness
 
         self._set_splines()
 
         self._original_splines = copy.deepcopy( self.splines )
         self._original_sample_times = copy.deepcopy( self.sample_times )
         self._original_sinogram_timeseries = copy.deepcopy( self.sinogram_timeseries )
-
-    def reset(self):
-        """Reset the spline to it's original state existing upon creation.
-        """
-        self.splines = copy.deepcopy( self._original_splines )
-        self.sample_times = copy.deepcopy( self._original_sample_times )
-        self.sinogram_timeseries = copy.deepcopy( self._original_sinogram_timeseries )
 
     def add_sinograms(self, times, sinograms, resolution=1e-8 ):
         """Add projections at a series of timepoints points into the spline. 
@@ -89,7 +70,7 @@ class SinogramInterpolator(object):
             for p in range( self.sinogram_timeseries.shape[2] ):
                 self.splines[i].append([])
                 for j in range( self.sinogram_timeseries.shape[3] ):
-                    spline = UnivariateSpline( self.sample_times, self.sinogram_timeseries[:,i,p,j], k=self.order, s=self.smoothness )
+                    spline = PiecewiseQuadratic( self.sample_times, self.sinogram_timeseries[:,i,p,j] )
                     self.splines[i][p].append( spline )
 
     def __call__(self, times, derivative=0, original=False):
@@ -116,7 +97,7 @@ class SinogramInterpolator(object):
         for i in range( self.sinogram_timeseries.shape[1] ):
             for p in range( self.sinogram_timeseries.shape[2] ):
                 for j in range( self.sinogram_timeseries.shape[3] ):
-                    interpolated_array[:, i, p, j] = splines[i][p][j](times, nu=derivative)
+                    interpolated_array[:, i, p, j] = splines[i][p][j](times, derivative=derivative)
         return interpolated_array
 
     def show_fit(self, row, projection, col):

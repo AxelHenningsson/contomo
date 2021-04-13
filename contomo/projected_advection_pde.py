@@ -48,28 +48,6 @@ class ProjectedAdvectionPDE(object):
         self.ray_model             =  ray_model
         self.sinogram_interpolator =  sinogram_interpolator
 
-    def get_interpolated_sinogram_derivative(self, time, rho):
-        """Compute sinogram temporal derivatives considering current density state and measured data.
-
-        To approximate the right hand side of equation (2), when P[rho] does not match the
-        interpolated values of the data, the projection of the current density field, y, is added
-        to the interpolated sinogram series and reinterpolation is executed as defined by the 
-        sinogram_interpolator object. This approximation ensures that time integration will consistently
-        strive to return to the original interpolation path defined by the measured data. 
-
-        Args:
-            time (float): time.
-            rho (:obj:`numpy array`): real space density field.
-
-        Returns:
-            dgdt (:obj:`numpy array`): sinogram temporal derivative at time=t, shape=(det_pix, num_proj, det_pix).
-
-        """
-        self.sinogram_interpolator.add_sinograms( [time], [self.ray_model.forward_project( rho )] )
-        dgdt = self.sinogram_interpolator( [time], derivative=1 )[0,:,:,:]
-
-        return dgdt
-
     def get_density_derivative(self, time, rho):
         """Compute right hand side of advection PDE (1) by solving for v(x,t) through (2).
 
@@ -85,7 +63,8 @@ class ProjectedAdvectionPDE(object):
             drhodt (:obj:`numpy array`): density field temporal derivative at time ``time``, ``shape=rho.shape``.
 
         """
-        dgdt = self.get_interpolated_sinogram_derivative( time, rho )
+
+        dgdt = self.sinogram_interpolator( [time], derivative=1 )[0,:,:,:]
         self._velocity_solver.flow_model.fixate_density_field( rho )
         self._velocity_solver.second_member = dgdt
 
@@ -146,7 +125,7 @@ class ProjectedAdvectionPDE(object):
         if verbose:
             print("##############################################################################")
             print(" R A Y    M O D E L    E R R O R ")
-            interpolated_sinogram  = self.sinogram_interpolator( [0], original=True )[0,:,:,:]
+            interpolated_sinogram  = self.sinogram_interpolator( [start_time], original=True )[0,:,:,:]
             reconstructed_sinogram = self.ray_model.forward_project( initial_volume )
             ray_model_error =  np.linalg.norm( interpolated_sinogram - reconstructed_sinogram )
             print( ray_model_error )
@@ -155,9 +134,14 @@ class ProjectedAdvectionPDE(object):
             print("Starting propagation of density volume in time")
 
         for step in range(number_of_timesteps):
+
+            
             if self.verbose:
                 print(" ")
                 print("time = ", current_time, "s   timestep = ", step, "  out of total ", number_of_timesteps, " steps")
+
+            # Reinterpolation to not build up error
+            self.sinogram_interpolator.add_sinograms( [current_time], [self.ray_model.forward_project( self.current_volume )] )
 
             previous_volume = self.current_volume.copy()
             self.current_volume = utils.TVD_RK3_step( self.get_density_derivative, 
@@ -176,6 +160,7 @@ class ProjectedAdvectionPDE(object):
 
             if save_path is not None:
                 self._save_integration_step( save_path, self.current_volume, current_time, step )
+            
 
     def _instantiate_save_folders(self, save_path):
         """Setup a folder structure to save reconstruction progress.
@@ -204,8 +189,9 @@ class ProjectedAdvectionPDE(object):
         times = np.load(save_path+"/times.npy")
 
         np.save( save_path + "/volumes/volume_"+str(step).zfill(4)+".npy", current_volume )
-        utils.save_as_vtk_voxel_volume(save_path + "/volumes/volume_"+str(step).zfill(4) , current_volume)
-        
+
+        utils.save_as_vtk_voxel_volume(save_path + "/volumes/volume_"+str(step).zfill(4) , current_volume, 3*[self.flow_model.dx], self.flow_model.origin)
+
         np.save( save_path + "/projections/reconstructed_sinogram_"+str(step).zfill(4)+".npy", reconstructed_sinogram )
         np.save( save_path + "/projections/interpolated_sinogram_"+str(step).zfill(4)+".npy", interpolated_sinogram )
 

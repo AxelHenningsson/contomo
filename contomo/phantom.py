@@ -515,10 +515,10 @@ class Spheres(DynamicPhantom):
         for i,time in enumerate(times):
             if self._dem_vtk_timeseries is not None:
                 self._set_sphere_ensemble_from_dem(time)
-            coordinates0 =  (self.get_coordinates(time)/scale) + translation
-            coordinates1 =  (self.get_coordinates(time+h)/scale) + translation
+            coordinates0 =  (self.get_coordinates(time)*scale) + translation
+            coordinates1 =  (self.get_coordinates(time+h)*scale) + translation
             velocities  =  ( coordinates1 - coordinates0 ) / h
-            radii       =  self.get_radii(time)/scale
+            radii       =  self.get_radii(time)*scale
             utils.save_as_vtk_particles(file+'_timestep_'+str(i)+'.vtk', coordinates0, velocities, radii )
 
 class _Sphere( object ):
