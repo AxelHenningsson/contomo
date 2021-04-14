@@ -3,8 +3,8 @@ import numpy as np
 import dill as pickle
 import matplotlib.pyplot as plt
 import os
-from . import utils
-from . import velocity_solver
+from contomo import utils
+from contomo import velocity_solver
 
 class ProjectedAdvectionPDE(object):
     """Advection partial differential equation (PDE) projected into sinogram space.
@@ -88,8 +88,8 @@ class ProjectedAdvectionPDE(object):
     def propagate_from_initial_value( self, 
                                       initial_volume,
                                       start_time,
+                                      end_time,
                                       stepsize,
-                                      number_of_timesteps,
                                       velocity_recovery_iterations = 10,
                                       verbose = True,
                                       save_path = None ):
@@ -97,9 +97,10 @@ class ProjectedAdvectionPDE(object):
 
         Args:
             initial_volume (:obj:`numpy array`): Density field at starting time.
-            start_time (float): Time at which the initial density field exists.
-            stepsize (float): Duration of time between two integration steps. 
-            number_of_timesteps (int): Number of integration steps to execute.
+            start_time (:obj:`float`): Time at which the initial density field exists.
+            end_time (:obj:`float`): Time at which to stop time integration.
+            stepsize (:obj:`float`): Duration of time between two integration steps. 
+            number_of_timesteps (:obj:`int`): Number of integration steps to execute.
             velocity_recovery_iterations (:obj:`numpy array`): Number of allowed iterations for recovering velocities 
                 in the projected sub-problem.
             verbose (:obj:`bool`, optional): Print progress and convergence metrics. Defaults to True.
@@ -133,9 +134,9 @@ class ProjectedAdvectionPDE(object):
             print(" ")
             print("Starting propagation of density volume in time")
 
+        number_of_timesteps = int( np.ceil( (end_time - start_time)/stepsize ) )
         for step in range(number_of_timesteps):
 
-            
             if self.verbose:
                 print(" ")
                 print("time = ", current_time, "s   timestep = ", step, "  out of total ", number_of_timesteps, " steps")
@@ -144,11 +145,15 @@ class ProjectedAdvectionPDE(object):
             self.sinogram_interpolator.add_sinograms( [current_time], [self.ray_model.forward_project( self.current_volume )] )
 
             previous_volume = self.current_volume.copy()
+
+            
+            adapted_stepsize = np.min([ stepsize, end_time - current_time] ) # To handle the last step
+
             self.current_volume = utils.TVD_RK3_step( self.get_density_derivative, 
                                                       current_time, 
                                                       self.current_volume.copy(), 
-                                                      stepsize )
-            current_time += stepsize
+                                                      adapted_stepsize )
+            current_time += adapted_stepsize
 
             if verbose:
                 interpolated_sinogram  = self.sinogram_interpolator( [current_time], original=True )[0,:,:,:]
@@ -160,7 +165,7 @@ class ProjectedAdvectionPDE(object):
 
             if save_path is not None:
                 self._save_integration_step( save_path, self.current_volume, current_time, step )
-            
+                        
 
     def _instantiate_save_folders(self, save_path):
         """Setup a folder structure to save reconstruction progress.

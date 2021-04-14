@@ -61,7 +61,7 @@ class PiecewiseQuadratic(object):
 
         Args:
             t (:obj:`iterable`): Time points at which to evaluate the piecewise polynomial.
-            derivative (:obj:``): Order of desired derivative to evaluate. Default is 0.
+            derivative (:obj:`int`): Order of desired derivative to evaluate. Default is 0.
 
         Returns:
             (:obj:`numpy array`) the polynomial values at input times.
@@ -75,7 +75,7 @@ class PiecewiseQuadratic(object):
             xpar = (t[i] - self._times[indx]) / (self._times[indx+1] - self._times[indx])
 
             assert xpar>=0.0 and xpar<=1.0, "xpar="+str(xpar)+" _times[indx+2]="+str(self._times[indx+2])+" _times[indx+1]="+str(self._times[indx+1])+" _times[indx]="+str(self._times[indx])+" t[i]="+str(t[i])
-            
+
             if derivative==0:
                 out[i] = c[0]*xpar**2 + c[1]*xpar + c[2]
             elif derivative==1:

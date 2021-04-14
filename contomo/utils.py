@@ -5,7 +5,7 @@ from pyevtk.hl import gridToVTK
 import meshio
 import vtk
 from vtk.util import numpy_support
-from . import ray_model
+from contomo import ray_model
 
 """A set of utility functions used across package.
 
