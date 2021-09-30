@@ -11,4 +11,4 @@ The central idea is to view the tomography problem as an
 inital value andvection PDE to be propagated in time. Solutions
 are obtianed by discretizing the density field in space in finite volume
 fashion and for each sought time recovering the driving velocity field through
-the projected advection equations using standard iteratove methods.
+the projected advection equations using iterative methods.
