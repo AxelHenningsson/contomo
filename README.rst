@@ -17,7 +17,7 @@ To install , first clone the repo as
 
  ``git clone https://github.com/AxelHenningsson/contomo.git``
  
- next run in the terminal
+next run in the terminal
  
  ``cd contomo``
  
