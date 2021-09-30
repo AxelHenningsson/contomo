@@ -2,7 +2,7 @@ Welcome to the CONTOMO project
 ===============================
 
 This is a scientific code originally developed to adress 
-high speed - sparse data reconstruction in tomography as published.
+high speed - sparse data reconstruction in tomography.
 
 The package contains support for reconstruction as well as generation of
 4d phantoms for numerical experiments.
