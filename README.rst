@@ -12,3 +12,15 @@ inital value andvection PDE to be propagated in time. Solutions
 are obtianed by discretizing the density field in space in finite volume
 fashion and for each sought time recovering the driving velocity field through
 the projected advection equations using iterative methods.
+
+To install , first clone the repo as
+
+ ``git clone https://github.com/AxelHenningsson/contomo.git``
+ 
+ next run in the terminal
+ 
+ ``cd contomo``
+ 
+ ``python setup.py install``
+ 
+ 
