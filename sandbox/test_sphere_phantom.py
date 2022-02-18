@@ -15,18 +15,22 @@ from contomo import utils
 ref_angles = np.linspace(0.,180.,180)
 static_angles = np.array([-45, 0, 45])
 
-number_of_detector_pixels = 128
+number_of_detector_pixels = 1024
 dem_timestepsize = 1e-5
 dem_particle_radius = 0.004
-dx = dem_particle_radius/(number_of_detector_pixels*2./32)
+dx = 0.000085
 hypersampling = 3
-translation  = (0, 0, 2.0*dem_particle_radius)
+translation  = (0, 0, -9.0*dem_particle_radius)
 
-ph = phantom.Spheres.from_DEM_liggghts( "/home/axel/workspace/contomo_old/DEM_simulations/post/",
-                                    pattern = ["silo_",".vtk"],
-                                    timestepsize = dem_timestepsize, 
+import os
+dempath = os.path.join('C:\\','Users', 'Henningsson', 'Documents', 'contomo_publication', 'DEM_simulations', 'impact_large_grains', 'post\\')
+print(dempath)
+
+ph = phantom.Spheres.from_DEM_liggghts(dempath,
+                                    pattern = ["impact_large_grains_",".vtk"],
+                                    timestepsize = dem_timestepsize,
                                     translation  = translation,
-                                    detector_pixel_size = dx, 
+                                    detector_pixel_size = dx,
                                     number_of_detector_pixels = number_of_detector_pixels,
                                     hypersampling = hypersampling )
 
@@ -36,19 +40,19 @@ t1 = np.max(times)
 times = np.linspace( t0, t1 - (t1-t0)*0.2, 240)
 dt = times[1]-times[0]
 
-max_cfl = ph.get_max_cfl(times, dt, dx)
-print("max_cfl : ", max_cfl)
-assert max_cfl<1.0
+# max_cfl = ph.get_max_cfl(times, dt, dx)
+# print("max_cfl : ", max_cfl)
+# assert max_cfl<1.0
 
-sino = ph.get_sinogram( time=times[0], angles=np.array([0,90]))
+sino = ph.get_sinogram( time=times[0], angles=np.array([0,90])) # this line makes the projection of 0 and 90 degrees.
 fig,ax = plt.subplots(1,2)
-ax[0].imshow(sino[:,0,:])
-ax[1].imshow(sino[:,1,:])
+ax[0].imshow(sino[:,0,:], cmap='gray')
+ax[1].imshow(sino[:,1,:], cmap='gray')
 
 sino = ph.get_sinogram( time=times[-1], angles=np.array([0,90]))
 fig,ax = plt.subplots(1,2)
-ax[0].imshow(sino[:,0,:])
-ax[1].imshow(sino[:,1,:])
+ax[0].imshow(sino[:,0,:], cmap='gray')
+ax[1].imshow(sino[:,1,:], cmap='gray')
 plt.show()
 
 
