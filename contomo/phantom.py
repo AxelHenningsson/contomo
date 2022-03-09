@@ -363,6 +363,8 @@ class Spheres(DynamicPhantom):
         Returns:
             :obj:`numpy array` of shape=(N,3) with per sphere x,y,z coordinates.
         """
+        if self._dem_vtk_timeseries is not None:
+            self._set_sphere_ensemble_from_dem(time)
         coordinates = [[ s.x(time), s.y(time), s.z(time)] for s in self._spheres]
         return np.asarray(coordinates)
 
@@ -375,6 +377,8 @@ class Spheres(DynamicPhantom):
         Returns:
             :obj:`numpy array` of shape=(N,) with per sphere density.
         """
+        if self._dem_vtk_timeseries is not None:
+            self._set_sphere_ensemble_from_dem(time)
         densities = [ s.density(time) for s in self._spheres]
         return np.asarray(densities)
 
@@ -387,6 +391,8 @@ class Spheres(DynamicPhantom):
         Returns:
             :obj:`numpy array` of shape=(N,) with per sphere radius.
         """
+        if self._dem_vtk_timeseries is not None:
+            self._set_sphere_ensemble_from_dem(time)
         radii = [ s.radius(time) for s in self._spheres]
         return np.asarray(radii)
 
@@ -513,12 +519,11 @@ class Spheres(DynamicPhantom):
         """
         h = 1e-6
         for i,time in enumerate(times):
-            if self._dem_vtk_timeseries is not None:
-                self._set_sphere_ensemble_from_dem(time)
             coordinates0 =  (self.get_coordinates(time)*scale) + translation
             coordinates1 =  (self.get_coordinates(time+h)*scale) + translation
             velocities  =  ( coordinates1 - coordinates0 ) / h
             radii       =  self.get_radii(time)*scale
+            print(i,time)
             utils.save_as_vtk_particles(file+'_timestep_'+str(i)+'.vtk', coordinates0, velocities, radii )
 
 class _Sphere( object ):

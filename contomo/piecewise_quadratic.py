@@ -1,4 +1,3 @@
-
 import numpy as np
 
 class PiecewiseQuadratic(object):
@@ -11,20 +10,21 @@ class PiecewiseQuadratic(object):
     Args:
         times (:obj:`numpy array`): Time points at which the data was collected, `shape=(N,)`.
         data (:obj:`numpy array`): The scalar data values collected at the timepoints, `shape=(N,)`.
-        bc_start (:obj:`float`): Value of first derivative at times[0]. Defaults to zero.
+        bc_indx (:obj:`float`): Index of data point at which to enforce derivative value ```bc_deriv```. Defaults to zero.
+        bc_deriv (:obj:`float`): Value of first derivative to enforce at times[```bc_indx```]. Defaults to zero.
 
     """
 
-    def __init__(self, times, data, bc_start=0):
+    def __init__(self, times, data, bc_indx=0, bc_deriv=0):
         assert np.allclose( np.sort(times), times ), "Input times needs to be sorted"
         self._times = times
         self._data  = data
         self._Mi = np.array([ [-1,  1,  -1],
                              [ 0,  0,   1],
                              [ 1,  0,   0]] )
-        self._point_derivatives = self._get_point_derivatives( times, data, bc_start )
+        self._point_derivatives = self._get_point_derivatives( times, data, bc_indx, bc_deriv )
 
-    def _get_point_derivatives(self, times, data, bc_start):
+    def _get_point_derivatives(self, times, data, bc_indx, bc_deriv):
         """Find the first derivatives at the given timepoints to speed up later interpolation evaluation.
 
         The idea is to solve for the values as a chain starting with setting the first derivative to `bc_start`, 
@@ -41,11 +41,22 @@ class PiecewiseQuadratic(object):
             point_derivatives (:obj:`numpy array`): Derivatives of the piecewise polynomial at input times, `shape=(N,)`.
 
         """
+
         point_derivatives = np.zeros((len(times),))
-        point_derivatives[0] = bc_start * (times[1] - times[0]) # convert to local basis
+        
+        point_derivatives[bc_indx] = bc_deriv * (times[bc_indx+1] - times[bc_indx]) # local basis scale
+        # NOTE: The point derivatives are in the local basis scale in a forward sense. i.e point_derivatives[i]
+        # is in the scale of region i, which has lenght dt = times[i+1] - times[i].
+
         base = 2*( data[1:] - data[:-1] )
-        for region in range(len(times)-1):
-            point_derivatives[region+1] = base[region] - point_derivatives[region]
+        for region in range(bc_indx, len(times)-2, 1): # forward marching +
+            # Here we may first solve, and then convert to the local scale of derivative
+            point_derivatives[region+1] = (base[region] - point_derivatives[region]) * ( (times[region+2] - times[region+1]) / (times[region+1] - times[region]) )
+            
+        for region in range(bc_indx, 0, -1 ): # backwards marching -
+            # Here we must first convert to local derivative scale and then solve.
+            point_derivatives[region-1] = base[region-1] - point_derivatives[region] * ( (times[region] - times[region-1]) / (times[region+1] - times[region]) )
+
         return point_derivatives
 
     def _time_to_intervall(self, time):

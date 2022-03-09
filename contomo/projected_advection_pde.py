@@ -64,10 +64,30 @@ class ProjectedAdvectionPDE(object):
 
         """
 
-        dgdt = self.sinogram_interpolator( [time], derivative=1 )[0,:,:,:]
+        # self.sinogram_interpolator.soft_spline_reset()
+        # self.sinogram_interpolator.add_sinograms( [time], 
+        #                                           [self.ray_model.forward_project( rho )], 
+        #                                           resolution = self.stepsize/1000.,
+        #                                           update_splines=False )
+        # bc_indx = np.argmin( np.abs( self.sinogram_interpolator.sample_times - time  ) ) + 1
+        # self.sinogram_interpolator.set_bc_index(bc_indx)
+        # self.sinogram_interpolator._set_splines(local=time)
+
+        ##DEBUG:
+        if 0:
+            t0 = np.max([0,time - 2.1*self.stepsize])
+            fig,ax = self.sinogram_interpolator.show_fit( [32], [0], [32], np.arange(t0, time + 2.1*self.stepsize, self.stepsize/30.) )
+            plt.show()
+        ##
+
+        dgdt = self.sinogram_interpolator( time, derivative=1 )[:,:,:]
+        
         self._velocity_solver.flow_model.fixate_density_field( rho )
+
         self._velocity_solver.second_member = dgdt
 
+        # TODO: Probably slightly faster to have the inital guess only be redefined at the measurement points
+        # and not for each RK integration point ...
         if self._velocity_solver.optimal_coefficents is not None:
             inital_guess = self._velocity_solver.optimal_coefficents 
         else:
@@ -91,6 +111,7 @@ class ProjectedAdvectionPDE(object):
                                       end_time,
                                       stepsize,
                                       velocity_recovery_iterations = 10,
+                                      reinterpolation="mutated moving bc",
                                       verbose = True,
                                       save_path = None ):
         """Propagate the target advection equation in time.
@@ -103,11 +124,15 @@ class ProjectedAdvectionPDE(object):
             number_of_timesteps (:obj:`int`): Number of integration steps to execute.
             velocity_recovery_iterations (:obj:`numpy array`): Number of allowed iterations for recovering velocities 
                 in the projected sub-problem.
+            reinterpolation (:obj:`str`): One of ```mutated moving bc```, ```mutated static bc``` or
+                ```original static bc```. Defines the strategy for computing projected derivatives during 
+                RK time integration Defaults to ```mutated moving bc```.
             verbose (:obj:`bool`, optional): Print progress and convergence metrics. Defaults to True.
             save_path (:obj:`string`, optional): Save reconstructed density fields and sinograms to the given
                 absolute path ending with desired folder name. Defaults to None.
 
         """
+        self.stepsize = stepsize
 
         self._velocity_solver = velocity_solver.VelocitySolver( self.flow_model, 
                                                                 self.ray_model,
@@ -123,49 +148,82 @@ class ProjectedAdvectionPDE(object):
         if save_path is not None:
             self._instantiate_save_folders( save_path )
 
+        # Compute inherent erros due to ray model etc..
+        interpolated_sinogram  = self.sinogram_interpolator( start_time, original=True )[:,:,:]
+        reconstructed_sinogram = self.ray_model.forward_project( initial_volume )
+        residual = interpolated_sinogram - reconstructed_sinogram
+        iL2 =  np.linalg.norm( interpolated_sinogram - reconstructed_sinogram )
+        iMaxAbs = np.max(np.abs(residual))
+        iRMSE = np.sqrt( np.sum( residual**2 ) / len(residual.flatten()) )
+        iMAE = np.sum( np.abs(residual)  / len(residual.flatten()) )
+
         if verbose:
             print("##############################################################################")
             print(" R A Y    M O D E L    E R R O R ")
-            interpolated_sinogram  = self.sinogram_interpolator( [start_time], original=True )[0,:,:,:]
-            reconstructed_sinogram = self.ray_model.forward_project( initial_volume )
-            ray_model_error =  np.linalg.norm( interpolated_sinogram - reconstructed_sinogram )
-            print( ray_model_error )
+            print( "L2 Norm: ", iL2 )
+            print( "Max.Abs: ", iMaxAbs )
+            print( "RMSE: ", iRMSE )
+            print( "MAE: ", iMAE )
+
             print("##############################################################################")
             print(" ")
             print("Starting propagation of density volume in time")
 
+        print(end_time, start_time, stepsize)
         number_of_timesteps = int( np.ceil( (end_time - start_time)/stepsize ) )
-        for step in range(number_of_timesteps):
+        for step in range(number_of_timesteps - 2): # we cannot integrate for the last step as the spline ends
 
             if self.verbose:
                 print(" ")
-                print("time = ", current_time, "s   timestep = ", step, "  out of total ", number_of_timesteps, " steps")
+                print("@ time = ", current_time, "s ,i.e, @timestep = ", step, "  integrating for timestep = ", step+1)
+                print("The total number of temporal data points is ", number_of_timesteps)
 
-            # Reinterpolation to not build up error
-            self.sinogram_interpolator.add_sinograms( [current_time], [self.ray_model.forward_project( self.current_volume )] )
+            # Reinterpolation strategy
+            if reinterpolation=="original static bc":
+                pass
+            elif reinterpolation=="mutated moving bc":
+                self.sinogram_interpolator.soft_spline_reset()
+                self.sinogram_interpolator.add_sinograms( [current_time], 
+                                                        [self.ray_model.forward_project( self.current_volume )], 
+                                                        resolution = self.stepsize/1000.,
+                                                        update_splines=False )
+                bc_indx = np.argmin( np.abs( self.sinogram_interpolator.sample_times - current_time  ) ) + 1
+                self.sinogram_interpolator.set_bc_index(bc_indx)
+                self.sinogram_interpolator._set_splines(local=current_time)
+            elif reinterpolation=="mutated static bc":
+                self.sinogram_interpolator.soft_spline_reset()
+                self.sinogram_interpolator.add_sinograms( [current_time], 
+                                                        [self.ray_model.forward_project( self.current_volume )], 
+                                                        resolution = self.stepsize/1000.,
+                                                        update_splines=False )
+                self.sinogram_interpolator.set_bc_index(0)
+                self.sinogram_interpolator._set_splines()
 
             previous_volume = self.current_volume.copy()
 
-            
             adapted_stepsize = np.min([ stepsize, end_time - current_time] ) # To handle the last step
 
             self.current_volume = utils.TVD_RK3_step( self.get_density_derivative, 
                                                       current_time, 
                                                       self.current_volume.copy(), 
                                                       adapted_stepsize )
+
             current_time += adapted_stepsize
 
             if verbose:
-                interpolated_sinogram  = self.sinogram_interpolator( [current_time], original=True )[0,:,:,:]
-                if save_path is not None:
-                    starting_reconstructed_sinogram = self.ray_model.forward_project( previous_volume )
-                    print("Original Siogram residual: ", np.linalg.norm( interpolated_sinogram - starting_reconstructed_sinogram) )
+                original_sinogram  = self.sinogram_interpolator( current_time, original=True )[:,:,:]
+                starting_reconstructed_sinogram = self.ray_model.forward_project( previous_volume )
                 reconstructed_sinogram = self.ray_model.forward_project( self.current_volume )
-                print("Siogram residual: ", np.linalg.norm( interpolated_sinogram - reconstructed_sinogram) )
+                residual = reconstructed_sinogram - original_sinogram
+                print("Original default sinogram L2 error to current time (no motion): ", np.linalg.norm( original_sinogram - starting_reconstructed_sinogram) )
+                print("Resulting sinogram L2 error to current time (by applying the motion): ", np.linalg.norm( original_sinogram - reconstructed_sinogram), "  (inherent L2", iL2, ")" )
+                print("Sinogram residual Max.Abs error: ", np.max(np.abs(residual)), "  (inherent Max.Abs", iMaxAbs, ")" )
+                print("Sinogram residual RMSE error: ", np.sqrt( np.sum( residual**2 ) / len(residual.flatten()) ), "  (inherent RMSE", iRMSE, ")" )
+                print("Sinogram residual MAE error: ", np.sum( np.abs(residual)  / len(residual.flatten()) ), "  (inherent MAE", iMAE, ")" )
 
             if save_path is not None:
                 self._save_integration_step( save_path, self.current_volume, current_time, step )
-                        
+
 
     def _instantiate_save_folders(self, save_path):
         """Setup a folder structure to save reconstruction progress.
@@ -189,7 +247,7 @@ class ProjectedAdvectionPDE(object):
         """Save volume and projections to disc in save_path directory.
 
         """
-        interpolated_sinogram  = self.sinogram_interpolator( [current_time], original=True )[0,:,:,:]
+        interpolated_sinogram  = self.sinogram_interpolator( current_time, original=True )[:,:,:]
         reconstructed_sinogram = self.ray_model.forward_project( current_volume )
         times = np.load(save_path+"/times.npy")
 

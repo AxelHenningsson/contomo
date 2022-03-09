@@ -326,13 +326,13 @@ class FlowModel(object):
 
         # For each spatial dimension axis=(x,y,z)
         for axis in range(3):
-            
+
             # Calculate cell vertex density gradients
             if self.vertex_gradients is not None:
                 rho_L_p, rho_L_n, rho_R_p, rho_R_n = self.vertex_gradients[axis]
             else:
                 rho_L_p, rho_L_n, rho_R_p, rho_R_n = self._get_vertex_gradients( self.rho, axis )
-            
+
             # Calculate cell vertex velocities
             vn, vp = self._get_vertex_velocity( axis )
 
